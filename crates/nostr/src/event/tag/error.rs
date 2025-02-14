@@ -54,6 +54,8 @@ pub enum Error {
     KindNotFound,
     /// Empty tag
     EmptyTag,
+    /// Empty identifier (`d` tag)
+    EmptyIdentifier,
 }
 
 #[cfg(feature = "std")]
@@ -81,6 +83,7 @@ impl fmt::Display for Error {
             Self::UnknownStandardizedTag => write!(f, "Unknown standardized tag"),
             Self::KindNotFound => write!(f, "Impossible to find tag kind"),
             Self::EmptyTag => write!(f, "Empty tag"),
+            Self::EmptyIdentifier => write!(f, "Empty identifier"),
         }
     }
 }

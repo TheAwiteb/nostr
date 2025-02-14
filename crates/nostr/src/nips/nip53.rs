@@ -207,7 +207,7 @@ impl From<LiveEvent> for Vec<Tag> {
 
         let mut tags = Vec::with_capacity(1);
 
-        tags.push(Tag::identifier(id));
+        tags.push(Tag::identifier(id)?);
 
         if let Some(title) = title {
             tags.push(Tag::from_standardized_without_cell(TagStandard::Title(

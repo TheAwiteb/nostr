@@ -204,11 +204,19 @@ impl Tag {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     #[inline]
-    pub fn identifier<T>(identifier: T) -> Self
+    pub fn identifier<T>(identifier: T) -> Result<Self, Error>
     where
         T: Into<String>,
     {
-        Self::from_standardized_without_cell(TagStandard::Identifier(identifier.into()))
+        let identifier = identifier.into();
+
+        if identifier.is_empty() {
+            return Err(Error::EmptyIdentifier);
+        }
+
+        Ok(Self::from_standardized_without_cell(
+            TagStandard::Identifier(identifier),
+        ))
     }
 
     /// Compose `["a", "<coordinate>"]` tag
