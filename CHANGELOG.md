@@ -67,6 +67,7 @@
 
 ### Fixed
 
+* nostr: fix `EventBuilder::git_repository_announcement` according to last NIP34 rev ([Yuki Kishimoto])
 * fix `EventBuilder::git_issue` according to last NIP34 rev ([Yuki Kishimoto])
 
 ### Removed

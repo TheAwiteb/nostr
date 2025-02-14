@@ -51,6 +51,10 @@ pub enum TagKind<'a> {
     Description,
     /// Size of the file in pixels
     Dim,
+    /// Earliest unique commit
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
+    EarliestUniqueCommit,
     /// Emoji
     Emoji,
     /// Encrypted
@@ -276,6 +280,7 @@ impl<'a> TagKind<'a> {
             Self::Delegation => "delegation",
             Self::Description => "description",
             Self::Dim => "dim",
+            Self::EarliestUniqueCommit => "earliest-unique-commit",
             Self::Emoji => "emoji",
             Self::Encrypted => "encrypted",
             Self::Ends => "ends",
@@ -344,6 +349,7 @@ impl<'a> From<&'a str> for TagKind<'a> {
             "delegation" => Self::Delegation,
             "description" => Self::Description,
             "dim" => Self::Dim,
+            "earliest-unique-commit" => Self::EarliestUniqueCommit,
             "emoji" => Self::Emoji,
             "encrypted" => Self::Encrypted,
             "ends" => Self::Ends,

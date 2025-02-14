@@ -21,10 +21,6 @@ use crate::nips::nip10::Marker;
 use crate::types::url::Url;
 use crate::{EventId, Kind, PublicKey, RelayUrl, Tag, TagKind, TagStandard, Timestamp};
 
-/// Earlier unique commit ID
-pub const EUC: &str = "euc";
-
-const GIT_REPO_ANNOUNCEMENT_ALT: &str = "git repository";
 const GIT_PATCH_ALT: &str = "git patch";
 const GIT_PATCH_COVER_LETTER_ALT: &str = "git patch cover letter";
 
@@ -52,7 +48,7 @@ pub struct GitRepositoryAnnouncement {
     /// made to identify it among forks and group it with other repositories hosted elsewhere that may represent essentially the same project.
     /// In most cases it will be the root commit of a repository.
     /// In case of a permanent fork between two projects, then the first commit after the fork should be used.
-    pub euc: Option<String>,
+    pub euc: Option<Sha1Hash>,
     /// Other recognized maintainers
     pub maintainers: Vec<PublicKey>,
 }
@@ -62,6 +58,7 @@ impl GitRepositoryAnnouncement {
         let mut tags: Vec<Tag> = Vec::with_capacity(1);
 
         // Add repo ID
+        // TODO: mustn't allow to use empty id
         tags.push(Tag::identifier(self.id));
 
         // Add name
@@ -98,10 +95,12 @@ impl GitRepositoryAnnouncement {
         }
 
         // Add EUC
-        if let Some(euc) = self.euc {
+        if let Some(hash) = self.euc {
+            tags.reserve_exact(2);
             tags.push(Tag::from_standardized_without_cell(
-                TagStandard::GitEarliestUniqueCommitId(euc),
+                TagStandard::GitEarliestUniqueCommitId(hash),
             ));
+            tags.push(Tag::reference(hash.to_string()));
         }
 
         // Add maintainers
@@ -110,9 +109,6 @@ impl GitRepositoryAnnouncement {
                 TagStandard::GitMaintainers(self.maintainers),
             ));
         }
-
-        // Add alt tag
-        tags.push(Tag::alt(GIT_REPO_ANNOUNCEMENT_ALT));
 
         // Build
         EventBuilder::new(Kind::GitRepoAnnouncement, "").tags(tags)
@@ -324,5 +320,58 @@ impl GitPatch {
 
         // Build
         EventBuilder::new(Kind::GitPatch, content).tags(tags)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use core::str::FromStr;
+
+    use super::*;
+    use crate::{Event, Keys, Tags};
+
+    #[test]
+    fn test_git_repo_announcement() {
+        let repo = GitRepositoryAnnouncement {
+            id: String::from("test"),
+            name: Some(String::from("Test nostr repository")),
+            description: Some(String::from("Long desc")),
+            web: Vec::new(),
+            clone: vec![Url::parse("https://github.com/rust-nostr/nostr.git").unwrap()],
+            relays: vec![
+                Url::parse("wss://example.com").unwrap(),
+                Url::parse("wss://example.org").unwrap(),
+            ],
+            euc: Some(Sha1Hash::from_str("aa231c4c6a5777dc89b42207b499891a344add5c").unwrap()),
+            maintainers: vec![PublicKey::parse(
+                "npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet",
+            )
+            .unwrap()],
+        };
+
+        let keys = Keys::generate();
+        let event: Event = repo.to_event_builder().sign_with_keys(&keys).unwrap();
+
+        assert_eq!(event.kind, Kind::GitRepoAnnouncement);
+        assert!(event.content.is_empty());
+
+        let tags = Tags::parse([
+            vec!["d", "test"],
+            vec!["name", "Test nostr repository"],
+            vec!["description", "Long desc"],
+            vec!["clone", "https://github.com/rust-nostr/nostr.git"],
+            vec!["relays", "wss://example.com/", "wss://example.org/"],
+            vec![
+                "earliest-unique-commit",
+                "aa231c4c6a5777dc89b42207b499891a344add5c",
+            ],
+            vec!["r", "aa231c4c6a5777dc89b42207b499891a344add5c"],
+            vec![
+                "maintainers",
+                "68d81165918100b7da43fc28f7d1fc12554466e1115886b9e7bb326f65ec4272",
+            ],
+        ])
+        .unwrap();
+        assert_eq!(event.tags, tags);
     }
 }
