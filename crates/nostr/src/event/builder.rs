@@ -1691,7 +1691,7 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
     #[inline]
-    pub fn git_issue(issue: GitIssue) -> Self {
+    pub fn git_issue(issue: GitIssue) -> Result<Self, Error> {
         issue.to_event_builder()
     }
 

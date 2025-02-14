@@ -15,18 +15,16 @@ use core::fmt;
 
 use hashes::sha1::Hash as Sha1Hash;
 
+use crate::event::builder::{Error, EventBuilder, WrongKindError};
 use crate::nips::nip01::Coordinate;
 use crate::nips::nip10::Marker;
 use crate::types::url::Url;
-use crate::{
-    EventBuilder, EventId, Kind, PublicKey, RelayUrl, Tag, TagKind, TagStandard, Timestamp,
-};
+use crate::{EventId, Kind, PublicKey, RelayUrl, Tag, TagKind, TagStandard, Timestamp};
 
 /// Earlier unique commit ID
 pub const EUC: &str = "euc";
 
 const GIT_REPO_ANNOUNCEMENT_ALT: &str = "git repository";
-const GIT_ISSUE_ALT: &str = "git issue";
 const GIT_PATCH_ALT: &str = "git patch";
 const GIT_PATCH_COVER_LETTER_ALT: &str = "git patch cover letter";
 
@@ -124,12 +122,10 @@ impl GitRepositoryAnnouncement {
 /// Git Issue
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct GitIssue {
-    /// The issue content (markdown)
-    pub content: String,
     /// The repository address
     pub repository: Coordinate,
-    /// Public keys (owners or other users)
-    pub public_keys: Vec<PublicKey>,
+    /// The issue content (markdown)
+    pub content: String,
     /// Subject
     pub subject: Option<String>,
     /// Labels
@@ -137,14 +133,27 @@ pub struct GitIssue {
 }
 
 impl GitIssue {
-    pub(crate) fn to_event_builder(self) -> EventBuilder {
-        let mut tags: Vec<Tag> = Vec::with_capacity(1);
+    /// Based on <https://github.com/nostr-protocol/nips/blob/ea36ec9ed7596e49bf7f217b05954c1fecacad88/34.md> revision.
+    pub(crate) fn to_event_builder(self) -> Result<EventBuilder, Error> {
+        // Check if repository address kind is wrong
+        if self.repository.kind != Kind::GitRepoAnnouncement {
+            return Err(Error::WrongKind {
+                received: self.repository.kind,
+                expected: WrongKindError::Single(Kind::GitRepoAnnouncement),
+            });
+        }
+
+        // TODO: check if coordinate has identifier
+
+        let owner_public_key: PublicKey = self.repository.public_key;
+
+        let mut tags: Vec<Tag> = Vec::with_capacity(2);
 
         // Add coordinate
         tags.push(Tag::coordinate(self.repository));
 
-        // Add public keys
-        tags.extend(self.public_keys.into_iter().map(Tag::public_key));
+        // Add owner public key
+        tags.push(Tag::public_key(owner_public_key));
 
         // Add subject
         if let Some(subject) = self.subject {
@@ -156,11 +165,8 @@ impl GitIssue {
         // Add labels
         tags.extend(self.labels.into_iter().map(Tag::hashtag));
 
-        // Add alt tag
-        tags.push(Tag::alt(GIT_ISSUE_ALT));
-
         // Build
-        EventBuilder::new(Kind::GitIssue, self.content).tags(tags)
+        Ok(EventBuilder::new(Kind::GitIssue, self.content).tags(tags))
     }
 }
 

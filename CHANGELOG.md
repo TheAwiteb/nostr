@@ -35,6 +35,7 @@
 * nostr: update `Tags::new` signature ([Yuki Kishimoto])
 * nostr: remove `WeakTag` ([Yuki Kishimoto])
 * nostr: change `TagStandard::Relays` variant inner value from `Vec<Url>` to `Vec<RelayUrl>` ([Yuki Kishimoto])
+* nostr: change `EventBuilder::git_issue` signature ([Yuki Kishimoto])
 
 ### Changed
 
@@ -65,6 +66,8 @@
 * ffi: add Mac Catalyst support in Swift package ([Yuki Kishimoto])
 
 ### Fixed
+
+* fix `EventBuilder::git_issue` according to last NIP34 rev ([Yuki Kishimoto])
 
 ### Removed
 
