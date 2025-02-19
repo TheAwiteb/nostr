@@ -11,6 +11,7 @@ use std::iter;
 use std::ops::Deref;
 use std::sync::Arc;
 
+use nostr::event::Tag;
 use nostr::nips::nip01::{Coordinate, CoordinateBorrow};
 use nostr::{Alphabet, Event, EventId, Filter, Kind, PublicKey, SingleLetterTag, Timestamp};
 use tokio::sync::{OwnedRwLockReadGuard, RwLock};
@@ -316,6 +317,14 @@ impl InternalDatabaseHelper {
                     to_discard.extend(self.internal_query_by_kind_and_author(params).map(|e| e.id));
                 }
             }
+        } else if kind == Kind::RequestToVanish {
+            // Remove all author event and Gift Wraps they p-tagged in it
+            to_discard.extend(self.events.iter().filter_map(|ev| {
+                (ev.pubkey == author
+                    || (ev.kind == Kind::GiftWrap
+                        && ev.tags.iter().any(|t| t == &Tag::public_key(author))))
+                .then_some(ev.id)
+            }));
         }
 
         // Remove events
@@ -790,6 +799,9 @@ impl DatabaseHelper {
 
 #[cfg(test)]
 mod tests {
+    use nostr::event::EventBuilder;
+    use nostr::signer::NostrSigner;
+    use nostr::types::RelayUrl;
     use nostr::{FromBech32, JsonUtil, Keys, SecretKey};
 
     use super::*;
@@ -1016,5 +1028,54 @@ mod tests {
                 .to_vec(),
             vec![ev]
         );
+    }
+
+    #[tokio::test]
+    async fn test_request_to_vanish() {
+        let author = Keys::new(SecretKey::from_bech32(SECRET_KEY_A).unwrap());
+        let pm_sender = Keys::new(SecretKey::from_bech32(SECRET_KEY_B).unwrap());
+        let indexes = DatabaseHelper::unbounded();
+
+        // FIXME(awiteb): Error because of nip59 feature, and the nostr crate in `Cargo.toml` using `std` feature only
+        // Gift wraps p-tagged the author
+        let pm1 = EventBuilder::private_msg(&pm_sender, author.public_key, "Test1", [])
+            .await
+            .unwrap();
+        let pm2 = EventBuilder::private_msg(&pm_sender, author.public_key, "Test2", [])
+            .await
+            .unwrap();
+
+        // Build indexes
+        let mut events: BTreeSet<Event> = BTreeSet::new();
+        events.insert(pm1);
+        events.insert(pm2);
+
+        for event in EVENTS.into_iter() {
+            let event = Event::from_json(event).unwrap();
+            events.insert(event);
+        }
+        let vanish_event = author
+            .sign_event(
+                EventBuilder::request_vanish([RelayUrl::parse("wss://example.com").unwrap()])
+                    .unwrap()
+                    .build(author.public_key),
+            )
+            .await
+            .unwrap();
+
+        // Insert request to vanish
+        events.insert(vanish_event.clone());
+        indexes.bulk_load(events).await;
+
+        // Test expected output
+        let expected_output = vec![
+            // All author's events are deleted
+            vanish_event,
+            Event::from_json(EVENTS[13]).unwrap(),
+            Event::from_json(EVENTS[5]).unwrap(),
+            Event::from_json(EVENTS[4]).unwrap(),
+        ];
+        assert_eq!(indexes.count(Filter::new()).await, 4);
+        assert_eq!(indexes.query(Filter::new()).await.to_vec(), expected_output);
     }
 }

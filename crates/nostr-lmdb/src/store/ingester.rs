@@ -6,6 +6,7 @@ use std::sync::mpsc::{Receiver, Sender};
 use std::thread;
 
 use heed::RwTxn;
+use nostr::filter::{Alphabet, Filter, SingleLetterTag};
 use nostr::nips::nip01::Coordinate;
 use nostr::{Event, Kind, Timestamp};
 use nostr_database::{FlatBufferBuilder, RejectedReason, SaveEventStatus};
@@ -185,13 +186,15 @@ impl Ingester {
         }
 
         // Handle deletion events
-        if let Kind::EventDeletion = event.kind {
+        if event.kind == Kind::EventDeletion {
             let invalid: bool = self.handle_deletion_event(&mut txn, &event)?;
 
             if invalid {
                 txn.abort();
                 return Ok(SaveEventStatus::Rejected(RejectedReason::InvalidDelete));
             }
+        } else if event.kind == Kind::RequestToVanish {
+            self.handle_request_to_vanish(&mut txn, &event)?;
         }
 
         // Store and index the event
@@ -243,5 +246,26 @@ impl Ingester {
         read_txn.commit()?;
 
         Ok(false)
+    }
+
+    fn handle_request_to_vanish(&self, txn: &mut RwTxn, event: &Event) -> nostr::Result<(), Error> {
+        // Acquire read txn
+        let read_txn = self.db.read_txn()?;
+
+        // Delete author events
+        self.db
+            .delete(&read_txn, txn, Filter::new().author(event.pubkey))?;
+        // Delete Gift Wraps that p-tagged the author
+        self.db.delete(
+            &read_txn,
+            txn,
+            Filter::new().kind(Kind::GiftWrap).custom_tag(
+                SingleLetterTag::lowercase(Alphabet::P),
+                event.pubkey.to_hex(),
+            ),
+        )?;
+
+        read_txn.commit()?;
+        Ok(())
     }
 }

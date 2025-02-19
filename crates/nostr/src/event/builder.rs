@@ -724,6 +724,43 @@ impl EventBuilder {
         Self::new(Kind::EventDeletion, reason.into()).tags(tags)
     }
 
+    /// Request to vanish with reason
+    ///
+    /// Must include at least one relay.
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/62.md>
+    pub fn request_vanish_with_reason<I, S>(relays: I, reason: S) -> Result<Self, Error>
+    where
+        I: IntoIterator<Item = RelayUrl>,
+        S: Into<String>,
+    {
+        let tags: Vec<_> = relays
+            .into_iter()
+            .map(TagStandard::Relay)
+            .map(Tag::from_standardized)
+            .collect();
+
+        if tags.is_empty() {
+            // FIXME(awiteb): Return a valid error, where there is must be at lest one relay
+            return Err(Error::Event(event::Error::InvalidId));
+        }
+
+        Ok(Self::new(Kind::RequestToVanish, reason).tags(tags))
+    }
+
+    /// Request to vanish
+    ///
+    /// Must include at least one relay.
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/62.md>
+    #[inline]
+    pub fn request_vanish<I>(relays: I) -> Result<Self, Error>
+    where
+        I: IntoIterator<Item = RelayUrl>,
+    {
+        Self::request_vanish_with_reason(relays, "")
+    }
+
     /// Add reaction (like/upvote, dislike/downvote or emoji) to an event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/25.md>
