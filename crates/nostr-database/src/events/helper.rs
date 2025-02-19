@@ -318,7 +318,7 @@ impl InternalDatabaseHelper {
                 }
             }
         } else if kind == Kind::RequestToVanish {
-            // Remove all author event and Gift Wraps they p-tagged in it
+            // Remove all author events and gift wraps they p-tagged in it
             to_discard.extend(self.events.iter().filter_map(|ev| {
                 (ev.pubkey == author
                     || (ev.kind == Kind::GiftWrap
