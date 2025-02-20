@@ -44,6 +44,8 @@ pub enum Error {
     Event(super::Error),
     /// NIP01 error
     NIP01(nip01::Error),
+    /// Empty tags, while at least one tag is required
+    EmptyTags,
     /// OpenTimestamps error
     #[cfg(feature = "nip03")]
     NIP03(String),
@@ -75,6 +77,7 @@ impl fmt::Display for Error {
         match self {
             Self::Event(e) => write!(f, "{e}"),
             Self::NIP01(e) => write!(f, "{e}"),
+            Self::EmptyTags => write!(f, "Empty tags, while at least one tag is required"),
             #[cfg(feature = "nip03")]
             Self::NIP03(e) => write!(f, "{e}"),
             #[cfg(feature = "nip04")]
