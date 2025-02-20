@@ -18,6 +18,8 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 pub mod borrow;
 pub mod builder;
+#[cfg(feature = "std")]
+mod collection;
 mod error;
 pub mod id;
 pub mod kind;
@@ -25,6 +27,8 @@ pub mod tag;
 pub mod unsigned;
 
 pub use self::builder::EventBuilder;
+#[cfg(feature = "std")]
+pub use self::collection::Events;
 pub use self::error::Error;
 pub use self::id::EventId;
 pub use self::kind::Kind;
