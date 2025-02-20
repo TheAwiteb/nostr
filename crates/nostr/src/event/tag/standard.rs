@@ -135,6 +135,10 @@ pub enum TagStandard {
     },
     Relay(RelayUrl),
     Relays(Vec<RelayUrl>),
+    /// All relays tag
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/62.md>
+    AllRelays,
     /// Proof of Work
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/13.md>
@@ -568,7 +572,7 @@ impl TagStandard {
                 character: Alphabet::K,
                 uppercase: *uppercase,
             }),
-            Self::Relay(..) => TagKind::Relay,
+            Self::Relay(..) | Self::AllRelays => TagKind::Relay,
             Self::POW { .. } => TagKind::Nonce,
             Self::Client { .. } => TagKind::Client,
             Self::Delegation { .. } => TagKind::Delegation,
@@ -790,6 +794,7 @@ impl From<TagStandard> for Vec<String> {
             }
             TagStandard::Kind { kind, .. } => vec![tag_kind, kind.to_string()],
             TagStandard::Relay(url) => vec![tag_kind, url.to_string()],
+            TagStandard::AllRelays => vec![tag_kind, "ALL_RELAYS".to_owned()],
             TagStandard::POW { nonce, difficulty } => {
                 vec![tag_kind, nonce.to_string(), difficulty.to_string()]
             }
