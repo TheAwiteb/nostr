@@ -17,6 +17,7 @@ use serde_json::{json, Value};
 
 #[cfg(all(feature = "std", feature = "nip04", feature = "nip46"))]
 use crate::nips::nip46::Message as NostrConnectMessage;
+use crate::nips::nip62::VanishTarget;
 use crate::prelude::*;
 
 /// Wrong kind error
@@ -732,23 +733,11 @@ impl EventBuilder {
     /// Must include at least one relay.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/62.md>
-    pub fn request_vanish_with_reason<I, S>(relays: I, reason: S) -> Result<Self, Error>
+    pub fn request_vanish_with_reason<S>(vanish_target: VanishTarget, reason: S) -> Self
     where
-        I: IntoIterator<Item = RelayUrl>,
         S: Into<String>,
     {
-        let tags: Vec<_> = relays
-            .into_iter()
-            .map(TagStandard::Relay)
-            .map(Tag::from_standardized)
-            .collect();
-
-        if tags.is_empty() {
-            // FIXME(awiteb): Return a valid error, where there is must be at lest one relay
-            return Err(Error::Event(event::Error::InvalidId));
-        }
-
-        Ok(Self::new(Kind::RequestToVanish, reason).tags(tags))
+        Self::new(Kind::RequestToVanish, reason).tags(Tags::from(vanish_target))
     }
 
     /// Request to vanish
@@ -757,11 +746,8 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/62.md>
     #[inline]
-    pub fn request_vanish<I>(relays: I) -> Result<Self, Error>
-    where
-        I: IntoIterator<Item = RelayUrl>,
-    {
-        Self::request_vanish_with_reason(relays, "")
+    pub fn request_vanish<I>(vanish_target: VanishTarget) -> Self {
+        Self::request_vanish_with_reason(vanish_target, "")
     }
 
     /// Add reaction (like/upvote, dislike/downvote or emoji) to an event
