@@ -63,9 +63,8 @@ impl From<VanishTarget> for Tags {
 
 #[cfg(test)]
 mod tests {
-    use crate::Tags;
-
     use super::VanishTarget;
+    use crate::Tags;
 
     #[test]
     fn test_single_relay() {
