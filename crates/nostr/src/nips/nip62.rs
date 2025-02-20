@@ -6,6 +6,9 @@
 //!
 //! https://github.com/nostr-protocol/nips/blob/master/62.md
 
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
+
 use crate::{RelayUrl, Tag, TagStandard, Tags};
 
 /// Request to Vanish target, which is multiple relays or all relays "ALL_RELAYS".
@@ -63,6 +66,9 @@ impl From<VanishTarget> for Tags {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(not(feature = "std"))]
+    use alloc::vec::Vec;
+
     use super::VanishTarget;
     use crate::Tags;
 
