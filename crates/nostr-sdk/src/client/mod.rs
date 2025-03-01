@@ -947,7 +947,7 @@ impl Client {
         self.gossip.process_event(event).await;
 
         // Send event using gossip
-        self.gossip_send_event(event, false).await
+        self.__gossip_send_event(event, false).await
     }
 
     /// Send event to specific relays
@@ -1192,7 +1192,7 @@ impl Client {
             return self.send_event(&event).await;
         }
 
-        self.gossip_send_event(&event, true).await
+        self.__gossip_send_event(&event, true).await
     }
 
     /// Send a private direct message to specific relays
@@ -1397,7 +1397,13 @@ impl Client {
         Ok(filters)
     }
 
-    async fn gossip_send_event(
+    /// Send an event using gossip
+    /// 
+    /// `is_nip17` arg must be `true` if the sending event is a NIP17 event.
+    /// 
+    /// Currently, this is a **private API**. It may become a public API in the future.
+    #[doc(hidden)]
+    pub async fn __gossip_send_event(
         &self,
         event: &Event,
         is_nip17: bool,
