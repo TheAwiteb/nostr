@@ -1254,10 +1254,10 @@ where
 {
     let hashtag = tag.get(1).ok_or(Error::UnknownStandardizedTag)?.as_ref();
 
-    // Not all languages have uppercase and lowercase versions of letters.
-    // If not all letters are lowercase and there is no single uppercase letter,
-    // it means the hashtag is in a language that doesn't have uppercase/lowercase letters.
-    if !hashtag.chars().all(char::is_lowercase) && hashtag.chars().any(char::is_uppercase) {
+    // Not all languages have distinct uppercase and lowercase letters.
+    // And `char::is_uppercase` will return `false` for those languages.
+    // So, we can't rely on `char::is_uppercase` to check if the hashtag is lowercase.
+    if hashtag.chars().any(char::is_uppercase) {
         return Err(Error::UnknownStandardizedTag);
     }
 
