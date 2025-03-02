@@ -257,7 +257,7 @@ impl NostrConnect {
 
         time::timeout(Some(self.timeout), async {
             while let Ok(notification) = notifications.recv().await {
-                if let RelayPoolNotification::Event { event, .. } = notification {
+                if let RelayPoolNotification::Message { message: RelayMessage::Event { event, .. }, .. } = notification {
                     if event.kind == Kind::NostrConnect {
                         let msg: String = util::decrypt(secret_key, &event)?;
                         let msg: Message = Message::from_json(msg)?;
@@ -411,7 +411,7 @@ async fn get_remote_signer_public_key(
 ) -> Result<GetRemoteSignerPublicKey, Error> {
     time::timeout(Some(timeout), async {
         while let Ok(notification) = notifications.recv().await {
-            if let RelayPoolNotification::Event { event, .. } = notification {
+            if let RelayPoolNotification::Message { message: RelayMessage::Event { event, .. }, .. } = notification {
                 if event.kind == Kind::NostrConnect {
                     // Decrypt content
                     let msg: String = util::decrypt(app_keys.secret_key(), &event)?;

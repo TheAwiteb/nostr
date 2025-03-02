@@ -367,14 +367,6 @@ impl InnerRelay {
 
                 // Convert relay to notification to pool notification
                 let notification: Option<RelayPoolNotification> = match notification {
-                    RelayNotification::Event {
-                        subscription_id,
-                        event,
-                    } => Some(RelayPoolNotification::Event {
-                        relay_url: self.url.clone(),
-                        subscription_id,
-                        event,
-                    }),
                     RelayNotification::Message { message } => {
                         Some(RelayPoolNotification::Message {
                             relay_url: self.url.clone(),
@@ -1003,15 +995,6 @@ impl InnerRelay {
         if !self.state.seen(&event.id)? {
             // Verify
             event.verify()?;
-
-            // Send notification
-            self.send_notification(
-                RelayNotification::Event {
-                    subscription_id: subscription_id.clone(),
-                    event: Box::new(event.clone()),
-                },
-                true,
-            );
         }
 
         Ok(Some(RelayMessage::Event {

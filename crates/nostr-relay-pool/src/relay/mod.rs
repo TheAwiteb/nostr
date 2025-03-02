@@ -56,14 +56,9 @@ pub enum SubscriptionAutoClosedReason {
 /// Relay Notification
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RelayNotification {
-    /// Received an [`Event`]. Does not include events sent by this client.
-    Event {
-        /// Subscription ID
-        subscription_id: SubscriptionId,
-        /// Event
-        event: Box<Event>,
-    },
-    /// Received a [`RelayMessage`]. Includes messages wrapping events that were sent by this client.
+    /// Received a [`RelayMessage`].
+    /// 
+    /// May includes messages wrapping events that were sent by this client.
     Message {
         /// Relay Message
         message: RelayMessage<'static>,
@@ -1175,12 +1170,12 @@ mod tests {
 
         // Listen for notifications
         let fut = relay2.handle_notifications(|notification| async {
-            if let RelayNotification::Event {
-                subscription_id,
-                event,
+            if let RelayNotification::Message {
+                message: RelayMessage::Event { subscription_id,
+                    event},
             } = notification
             {
-                if subscription_id == sub_id {
+                if subscription_id.as_ref() == &sub_id {
                     if event.id == event_id {
                         return Ok(true);
                     } else {
