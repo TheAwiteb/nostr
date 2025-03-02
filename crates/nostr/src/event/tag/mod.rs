@@ -303,10 +303,9 @@ impl Tag {
     #[inline]
     pub fn hashtag<T>(hashtag: T) -> Self
     where
-        T: Into<String>,
+        T: AsRef<str>,
     {
-        let hashtag: String = hashtag.into();
-        Self::from_standardized_without_cell(TagStandard::Hashtag(hashtag.to_lowercase()))
+        Self::from_standardized_without_cell(TagStandard::Hashtag(hashtag.as_ref().to_lowercase()))
     }
 
     /// Compose `["r", "<value>"]` tag
