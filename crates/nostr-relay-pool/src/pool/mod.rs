@@ -28,10 +28,10 @@ pub use self::output::Output;
 use crate::policy::AdmitPolicy;
 use crate::relay::flags::FlagCheck;
 use crate::relay::options::{RelayOptions, ReqExitPolicy, SyncOptions};
-use crate::relay::{Relay, SyncItems};
+use crate::relay::Relay;
 use crate::shared::SharedState;
 use crate::stream::ReceiverStream;
-use crate::{Reconciliation, RelayServiceFlags, SubscribeOptions};
+use crate::{Reconciliation, RelayServiceFlags, SubscribeOptions, SyncUploader};
 
 /// Relay Pool Notification
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -113,6 +113,16 @@ impl RelayPool {
         T: AdmitPolicy + 'static,
     {
         self.inner.state.set_admit_policy(policy)?;
+        Ok(())
+    }
+
+    /// Set a sync uploader
+    #[inline]
+    pub fn set_sync_uploader<T>(&self, uploader: T) -> Result<(), Error>
+    where
+        T: SyncUploader + 'static,
+    {
+        self.inner.state.set_sync_uploader(uploader)?;
         Ok(())
     }
 
@@ -843,7 +853,7 @@ impl RelayPool {
     pub async fn sync(
         &self,
         filter: Filter,
-        items: SyncItems,
+        items: Vec<(EventId, Timestamp)>,
         opts: &SyncOptions,
     ) -> Result<Output<Reconciliation>, Error> {
         let urls: Vec<RelayUrl> = self.__relay_urls().await;
@@ -855,7 +865,7 @@ impl RelayPool {
         &self,
         urls: I,
         filter: Filter,
-        items: SyncItems,
+        items: Vec<(EventId, Timestamp)>,
         opts: &SyncOptions,
     ) -> Result<Output<Reconciliation>, Error>
     where
@@ -863,7 +873,7 @@ impl RelayPool {
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        let tup: (Filter, SyncItems) = (filter, items);
+        let tup: (Filter, Vec<(EventId, Timestamp)>) = (filter, items);
 
         // Reconcile
         let targets = urls.into_iter().map(|u| (u, tup.clone()));
@@ -877,12 +887,12 @@ impl RelayPool {
         opts: &SyncOptions,
     ) -> Result<Output<Reconciliation>, Error>
     where
-        I: IntoIterator<Item = (U, (Filter, SyncItems))>,
+        I: IntoIterator<Item = (U, (Filter, Vec<(EventId, Timestamp)>))>,
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
         // Collect targets
-        let targets: HashMap<RelayUrl, (Filter, SyncItems)> = targets
+        let targets: HashMap<RelayUrl, (Filter, Vec<(EventId, Timestamp)>)> = targets
             .into_iter()
             .map(|(u, v)| Ok((u.try_into_url()?, v)))
             .collect::<Result<_, Error>>()?;

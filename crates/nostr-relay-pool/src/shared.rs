@@ -15,6 +15,7 @@ use nostr::{EventId, NostrSigner};
 use tokio::sync::RwLock;
 
 use crate::policy::AdmitPolicy;
+use crate::sync::SyncUploader;
 use crate::transport::websocket::{
     DefaultWebsocketTransport, IntoWebSocketTransport, WebSocketTransport,
 };
@@ -28,6 +29,8 @@ pub enum SharedStateError {
     SignerNotConfigured,
     /// Admit policy already set
     AdmitPolicyAlreadySet,
+    /// Sync uploader already set
+    SyncUploaderAlreadySet,
     MutexPoisoned,
 }
 
@@ -38,6 +41,7 @@ impl fmt::Display for SharedStateError {
         match self {
             Self::SignerNotConfigured => write!(f, "signer not configured"),
             Self::AdmitPolicyAlreadySet => write!(f, "admission policy already set"),
+            Self::SyncUploaderAlreadySet => write!(f, "sync uploader already set"),
             Self::MutexPoisoned => write!(f, "mutex poisoned"),
         }
     }
@@ -51,12 +55,19 @@ pub struct SharedState {
     nip42_auto_authentication: Arc<AtomicBool>,
     seen_ids_cache: Arc<Mutex<LruCache<u64, ()>>>,
     pub(crate) admit_policy: OnceLock<Arc<dyn AdmitPolicy>>,
+    pub(crate) sync_uploader: OnceLock<Arc<dyn SyncUploader>>,
     // TODO: add a semaphore to limit number of concurrent websocket connections attempts?
 }
 
 impl Default for SharedState {
     fn default() -> Self {
-        Self::new(DefaultWebsocketTransport.into_transport(), None, None, true)
+        Self::new(
+            DefaultWebsocketTransport.into_transport(),
+            None,
+            None,
+            None,
+            true,
+        )
     }
 }
 
@@ -65,6 +76,7 @@ impl SharedState {
         transport: Arc<dyn WebSocketTransport>,
         signer: Option<Arc<dyn NostrSigner>>,
         admit_policy: Option<Arc<dyn AdmitPolicy>>,
+        sync_uploader: Option<Arc<dyn SyncUploader>>,
         nip42_auto_authentication: bool,
     ) -> Self {
         let max_seen_ids_cache_size: NonZeroUsize = NonZeroUsize::new(MAX_SEEN_IDS_TRACKER_SIZE)
@@ -77,6 +89,10 @@ impl SharedState {
             seen_ids_cache: Arc::new(Mutex::new(LruCache::new(max_seen_ids_cache_size))),
             admit_policy: match admit_policy {
                 Some(policy) => OnceLock::from(policy),
+                None => OnceLock::new(),
+            },
+            sync_uploader: match sync_uploader {
+                Some(uploader) => OnceLock::from(uploader),
                 None => OnceLock::new(),
             },
         }
@@ -100,6 +116,17 @@ impl SharedState {
         self.admit_policy
             .set(Arc::new(policy))
             .map_err(|_| SharedStateError::AdmitPolicyAlreadySet)
+    }
+
+    /// Set a sync uploader
+    #[inline]
+    pub(crate) fn set_sync_uploader<T>(&self, uploader: T) -> Result<(), SharedStateError>
+    where
+        T: SyncUploader + 'static,
+    {
+        self.sync_uploader
+            .set(Arc::new(uploader))
+            .map_err(|_| SharedStateError::SyncUploaderAlreadySet)
     }
 
     /// Check if auto authentication to relays is enabled

@@ -25,6 +25,7 @@ pub mod relay;
 #[doc(hidden)]
 mod shared;
 pub mod stream;
+mod sync;
 pub mod transport;
 
 pub use self::pool::options::RelayPoolOptions;
@@ -36,6 +37,7 @@ pub use self::relay::options::{
 };
 pub use self::relay::stats::RelayConnectionStats;
 pub use self::relay::{Reconciliation, Relay, RelayNotification, RelayStatus};
+pub use self::sync::SyncUploader;
 
 // Not public API.
 #[doc(hidden)]

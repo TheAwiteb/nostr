@@ -25,7 +25,7 @@ async fn main() -> Result<()> {
     // Negentropy sync
     let filter = Filter::new().author(keys.public_key());
     let (tx, mut rx) = SyncProgress::channel();
-    let opts = SyncOptions::default().dry_run().progress(tx);
+    let opts = SyncOptions::default().progress(tx);
 
     tokio::spawn(async move {
         while rx.changed().await.is_ok() {

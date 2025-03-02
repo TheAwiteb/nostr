@@ -40,6 +40,7 @@ pub use self::status::RelayStatus;
 use crate::policy::AdmitPolicy;
 use crate::shared::SharedState;
 use crate::transport::websocket::{BoxSink, BoxStream};
+use crate::SyncUploader;
 
 /// Subscription auto-closed reason
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -94,36 +95,6 @@ pub enum RelayNotification {
 //     // Receive failures (NOT CURRENTLY AVAILABLE)
 //     // pub receive: HashMap<EventId, Vec<String>>,
 // }
-
-/// Sync items
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum SyncItems {
-    /// Down only
-    ///
-    /// Passing these items, you will be able only to do a DOWN sync.
-    Down(Vec<(EventId, Timestamp)>),
-    /// Full
-    ///
-    /// This supports both sync in UP and DOWN directions.
-    // TODO: this may increase a lot the memory usage if the sync is very large
-    Full(Events),
-}
-
-impl SyncItems {
-    pub(crate) fn len(&self) -> usize {
-        match self {
-            SyncItems::Down(items) => items.len(),
-            SyncItems::Full(events) => events.len(),
-        }
-    }
-
-    pub(crate) fn iter(&self) -> Box<dyn Iterator<Item = (EventId, Timestamp)> + '_> {
-        match self {
-            SyncItems::Down(items) => Box::new(items.iter().map(|(id, ts)| (*id, *ts))),
-            SyncItems::Full(events) => Box::new(events.iter().map(|e| (e.id, e.created_at))),
-        }
-    }
-}
 
 /// Reconciliation output
 #[derive(Debug, Clone, Default)]
@@ -186,8 +157,7 @@ impl Relay {
     /// Create new relay with default in-memory database and custom options
     #[inline]
     pub fn with_opts(url: RelayUrl, opts: RelayOptions) -> Self {
-        let mut state = SharedState::default();
-        Self::internal_custom(url, state, opts)
+        Self::internal_custom(url, SharedState::default(), opts)
     }
 
     #[inline]
@@ -204,6 +174,16 @@ impl Relay {
         T: AdmitPolicy + 'static,
     {
         self.inner.state.set_admit_policy(policy)?;
+        Ok(())
+    }
+
+    /// Set a sync uploader
+    #[inline]
+    pub fn set_sync_uploader<T>(&self, uploader: T) -> Result<(), Error>
+    where
+        T: SyncUploader + 'static,
+    {
+        self.inner.state.set_sync_uploader(uploader)?;
         Ok(())
     }
 
@@ -676,7 +656,7 @@ impl Relay {
     pub async fn sync(
         &self,
         filter: Filter,
-        items: SyncItems,
+        items: Vec<(EventId, Timestamp)>,
         opts: &SyncOptions,
     ) -> Result<Reconciliation, Error> {
         // Perform health checks

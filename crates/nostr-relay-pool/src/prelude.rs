@@ -17,6 +17,7 @@ pub use crate::policy::*;
 pub use crate::pool::constants::*;
 pub use crate::pool::options::*;
 pub use crate::pool::{self, *};
+pub use crate::relay::options::*;
 pub use crate::relay::{self, *};
 pub use crate::stream::*;
 pub use crate::*;

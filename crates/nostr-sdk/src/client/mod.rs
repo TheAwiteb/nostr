@@ -81,11 +81,17 @@ impl Client {
     }
 
     fn from_builder(builder: ClientBuilder) -> Self {
+        // Construct sync uploader
+        let uploader: NegentropyUploader = NegentropyUploader {
+            database: builder.database.clone(),
+        };
+
         // Construct shared state
         let state = SharedState::new(
             builder.websocket_transport,
             builder.signer,
             builder.admit_policy,
+            Some(Arc::new(uploader)),
             builder.opts.nip42_auto_authentication,
         );
 
@@ -662,8 +668,15 @@ impl Client {
 
     /// Sync events with relays (negentropy reconciliation)
     ///
+    /// # Gossip
+    ///
     /// If `gossip` is enabled (see [`Options::gossip`]) the events will be reconciled also from
     /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
+    ///
+    /// # Database
+    ///
+    /// This method automatically gets sync items from the database.
+    /// All received events will be automatically saved into the database.
     ///
     /// <https://github.com/hoytech/negentropy>
     #[inline]
@@ -676,14 +689,9 @@ impl Client {
             return self.gossip_sync_negentropy(filter, opts).await;
         }
 
-        // TODO: use transactional zero-copy query and remove negentropy_items method
-
         // Get items
-        let items: SyncItems = if opts.do_up() {
-            SyncItems::Full(self.database.query(filter.clone()).await?)
-        } else {
-            SyncItems::Down(self.database.negentropy_items(filter.clone()).await?)
-        };
+        let items: Vec<(EventId, Timestamp)> =
+            self.database.negentropy_items(filter.clone()).await?;
 
         // Sync
         Ok(self.pool.sync(filter, items, opts).await?)
@@ -704,12 +712,10 @@ impl Client {
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
         // Get items
-        let items: SyncItems = if opts.do_up() {
-            SyncItems::Full(self.database.query(filter.clone()).await?)
-        } else {
-            SyncItems::Down(self.database.negentropy_items(filter.clone()).await?)
-        };
+        let items: Vec<(EventId, Timestamp)> =
+            self.database.negentropy_items(filter.clone()).await?;
 
+        // Sync
         Ok(self.pool.sync_with(urls, filter, items, opts).await?)
     }
 
@@ -1574,22 +1580,31 @@ impl Client {
         // Break down filter
         let temp_filters = self.break_down_filter(filter).await?;
 
-        let mut filters: HashMap<RelayUrl, (Filter, SyncItems)> =
+        let mut filters: HashMap<RelayUrl, (Filter, Vec<(EventId, Timestamp)>)> =
             HashMap::with_capacity(temp_filters.len());
 
         // Iterate broken down filters and compose new filters for targeted reconciliation
         for (url, filter) in temp_filters.into_iter() {
             // Get items
-            let items: SyncItems = if opts.do_up() {
-                SyncItems::Full(self.database.query(filter.clone()).await?)
-            } else {
-                SyncItems::Down(self.database.negentropy_items(filter.clone()).await?)
-            };
+            let items: Vec<(EventId, Timestamp)> =
+                self.database.negentropy_items(filter.clone()).await?;
 
+            // Insert
             filters.insert(url, (filter, items));
         }
 
         // Reconciliation
         Ok(self.pool.sync_targeted(filters, opts).await?)
+    }
+}
+
+#[derive(Debug)]
+struct NegentropyUploader {
+    database: Arc<dyn NostrDatabase>,
+}
+
+impl SyncUploader for NegentropyUploader {
+    fn get_event_by_id<'a>(&'a self, id: &'a EventId) -> BoxedFuture<'a, Option<Event>> {
+        Box::pin(async { self.database.event_by_id(id).await.ok().flatten() })
     }
 }
