@@ -35,7 +35,7 @@ use super::{
     Error, Reconciliation, RelayNotification, RelayStatus, SubscriptionActivity,
     SubscriptionAutoClosedReason,
 };
-use crate::middleware::AdmitStatus;
+use crate::middleware::{AdmitStatus, AuthenticationStatus};
 use crate::pool::RelayPoolNotification;
 use crate::relay::status::AtomicRelayStatus;
 use crate::shared::SharedState;
@@ -1114,32 +1114,40 @@ impl InnerRelay {
         })
     }
 
+    // TODO: improve auth errors
     async fn auth(&self, challenge: String) -> Result<(), Error> {
-        // Get signer
-        let signer = self.state.signer().await?;
+        match &self.state.authentication_layer {
+            Some(layer) => match layer.build_authentication(&self.url, &challenge).await? {
+                AuthenticationStatus::Success(event) => {
+                    // Check if the received authentication event is valid
+                    if !nip42::is_valid_auth_event(&event, &self.url, &challenge) {
+                        return Err(Error::AuthenticationFailed);
+                    }
 
-        // Construct event
-        let event: Event = EventBuilder::auth(challenge, self.url.clone())
-            .sign(&signer)
-            .await?;
+                    // Subscribe to notifications
+                    let mut notifications = self.internal_notification_sender.subscribe();
 
-        // Subscribe to notifications
-        let mut notifications = self.internal_notification_sender.subscribe();
+                    // Send the AUTH message
+                    self.send_msg(ClientMessage::Auth(Cow::Borrowed(&event)))?;
 
-        // Send the AUTH message
-        self.send_msg(ClientMessage::Auth(Cow::Borrowed(&event)))?;
+                    // Wait for OK
+                    // The event ID is already checked in `wait_for_ok` method
+                    let (status, message) = self
+                        .wait_for_ok(&mut notifications, &event.id, WAIT_FOR_OK_TIMEOUT)
+                        .await?;
 
-        // Wait for OK
-        // The event ID is already checked in `wait_for_ok` method
-        let (status, message) = self
-            .wait_for_ok(&mut notifications, &event.id, WAIT_FOR_OK_TIMEOUT)
-            .await?;
-
-        // Check status
-        if status {
-            Ok(())
-        } else {
-            Err(Error::RelayMessage(message))
+                    // Check status
+                    if status {
+                        Ok(())
+                    } else {
+                        Err(Error::RelayMessage(message))
+                    }
+                }
+                // Authentication rejected
+                AuthenticationStatus::Rejected { .. } => Err(Error::AuthenticationFailed),
+            },
+            // No authentication layer provided
+            None => Err(Error::AuthenticationFailed),
         }
     }
 

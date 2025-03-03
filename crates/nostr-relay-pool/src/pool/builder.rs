@@ -11,7 +11,7 @@ use nostr_database::{MemoryDatabase, NostrDatabase};
 
 use super::options::RelayPoolOptions;
 use super::RelayPool;
-use crate::middleware::AdmitPolicy;
+use crate::middleware::{AdmitPolicy, AuthenticationLayer};
 use crate::transport::websocket::{DefaultWebsocketTransport, WebSocketTransport};
 
 /// Relay Pool builder
@@ -21,6 +21,8 @@ pub struct RelayPoolBuilder {
     pub websocket_transport: Arc<dyn WebSocketTransport>,
     /// Admission policy
     pub admit_policy: Option<Arc<dyn AdmitPolicy>>,
+    /// Authentication layer
+    pub authentication_layer: Option<Arc<dyn AuthenticationLayer>>,
     /// Relay pool options
     pub opts: RelayPoolOptions,
     // Private stuff
@@ -35,6 +37,7 @@ impl Default for RelayPoolBuilder {
         Self {
             websocket_transport: Arc::new(DefaultWebsocketTransport),
             admit_policy: None,
+            authentication_layer: None,
             opts: RelayPoolOptions::default(),
             __database: Arc::new(MemoryDatabase::default()),
             __signer: None,
@@ -66,6 +69,16 @@ impl RelayPoolBuilder {
         T: AdmitPolicy + 'static,
     {
         self.admit_policy = Some(Arc::new(policy));
+        self
+    }
+
+    /// Authentication layer
+    #[inline]
+    pub fn authentication_layer<T>(mut self, layer: T) -> Self
+    where
+        T: AuthenticationLayer + 'static,
+    {
+        self.authentication_layer = Some(Arc::new(layer));
         self
     }
 

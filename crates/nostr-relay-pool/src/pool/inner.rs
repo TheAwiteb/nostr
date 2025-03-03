@@ -56,6 +56,7 @@ impl InnerRelayPool {
                 builder.websocket_transport,
                 builder.__signer,
                 builder.admit_policy,
+                builder.authentication_layer,
                 builder.opts.nip42_auto_authentication,
             ),
             atomic: Arc::new(AtomicPrivateData {

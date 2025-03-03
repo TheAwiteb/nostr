@@ -60,3 +60,26 @@ pub trait AdmitPolicy: fmt::Debug + Send + Sync {
         event: &'a Event,
     ) -> BoxedFuture<'a, Result<AdmitStatus, MiddlewareError>>;
 }
+
+/// Authentication status
+pub enum AuthenticationStatus {
+    /// Success
+    Success(Event),
+    /// Rejected
+    Rejected {
+        /// Rejection reason
+        reason: String,
+    },
+}
+
+/// Authentication layer
+pub trait AuthenticationLayer: fmt::Debug + Send + Sync {
+    /// Build the NIP42 [`Event`] for relay authentication
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
+    fn build_authentication<'a>(
+        &'a self,
+        relay_url: &'a RelayUrl,
+        challenge: &'a str,
+    ) -> BoxedFuture<'a, Result<AuthenticationStatus, MiddlewareError>>;
+}

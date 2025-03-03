@@ -354,9 +354,10 @@ impl Relay {
 
         // If auth required, wait for authentication adn resend it
         if let Some(MachineReadablePrefix::AuthRequired) = MachineReadablePrefix::parse(&message) {
-            // Check if NIP42 auth is enabled and signer is set
-            let has_signer: bool = self.inner.state.has_signer().await;
-            if self.inner.state.is_auto_authentication_enabled() && has_signer {
+            // Check if NIP42 auth is enabled and the authentication layer is set
+            if self.inner.state.is_auto_authentication_enabled()
+                && self.inner.state.authentication_layer.is_some()
+            {
                 // Wait that relay authenticate
                 self.wait_for_authentication(&mut notifications, WAIT_FOR_AUTHENTICATION_TIMEOUT)
                     .await?;
@@ -702,10 +703,14 @@ impl Relay {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use async_utility::time;
+    use nostr::event::EventBuilder;
     use nostr_relay_builder::prelude::*;
 
     use super::{Error, *};
+    use crate::middleware::{AuthenticationLayer, AuthenticationStatus, MiddlewareError};
 
     fn new_relay(url: RelayUrl, opts: RelayOptions) -> Relay {
         Relay::new(url, SharedState::default(), opts)
@@ -734,6 +739,26 @@ mod tests {
         }
 
         (relay, mock)
+    }
+
+    #[derive(Debug)]
+    struct AuthMiddleware {
+        keys: Keys,
+    }
+
+    impl AuthenticationLayer for AuthMiddleware {
+        fn build_authentication<'a>(
+            &'a self,
+            relay_url: &'a RelayUrl,
+            challenge: &'a str,
+        ) -> BoxedFuture<'a, Result<AuthenticationStatus, MiddlewareError>> {
+            Box::pin(async move {
+                let event = EventBuilder::auth(challenge, relay_url.clone())
+                    .sign_with_keys(&self.keys)
+                    .map_err(MiddlewareError::backend)?;
+                Ok(AuthenticationStatus::Success(event))
+            })
+        }
     }
 
     #[tokio::test]
@@ -1044,6 +1069,37 @@ mod tests {
         let mock = LocalRelay::run(builder).await.unwrap();
         let url = RelayUrl::parse(&mock.url()).unwrap();
 
+        let mut relay: Relay = new_relay(url, RelayOptions::default());
+
+        // Enable authentication
+        relay.inner.state.automatic_authentication(true);
+
+        // Signer
+        let keys = Keys::generate();
+
+        // Set the authentication layer
+        relay.inner.state.authentication_layer =
+            Some(Arc::new(AuthMiddleware { keys: keys.clone() }));
+
+        relay.connect();
+
+        // Send event
+        let event = EventBuilder::text_note("Test")
+            .sign_with_keys(&keys)
+            .unwrap();
+        assert!(relay.send_event(&event).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_nip42_send_event_unauthenticated() {
+        // Mock relay
+        let opts = RelayBuilderNip42 {
+            mode: RelayBuilderNip42Mode::Write,
+        };
+        let builder = RelayBuilder::default().nip42(opts);
+        let mock = LocalRelay::run(builder).await.unwrap();
+        let url = RelayUrl::parse(&mock.url()).unwrap();
+
         let relay: Relay = new_relay(url, RelayOptions::default());
 
         relay.inner.state.automatic_authentication(true);
@@ -1066,19 +1122,49 @@ mod tests {
         } else {
             panic!("Unexpected error");
         }
-
-        // Set a signer
-        relay.inner.state.set_signer(keys.clone()).await;
-
-        // Send as authenticated
-        let event = EventBuilder::text_note("Test")
-            .sign_with_keys(&keys)
-            .unwrap();
-        assert!(relay.send_event(&event).await.is_ok());
     }
 
     #[tokio::test]
     async fn test_nip42_fetch_events() {
+        // Mock relay
+        let opts = RelayBuilderNip42 {
+            mode: RelayBuilderNip42Mode::Read,
+        };
+        let builder = RelayBuilder::default().nip42(opts);
+        let mock = LocalRelay::run(builder).await.unwrap();
+        let url = RelayUrl::parse(&mock.url()).unwrap();
+
+        let mut relay: Relay = new_relay(url, RelayOptions::default());
+
+        // Enable NIP42 auto auth
+        relay.inner.state.automatic_authentication(true);
+
+        // Signer
+        let keys = Keys::generate();
+
+        // Set the authentication layer
+        relay.inner.state.authentication_layer =
+            Some(Arc::new(AuthMiddleware { keys: keys.clone() }));
+
+        relay.connect();
+
+        // Send an event
+        let event = EventBuilder::text_note("Test")
+            .sign_with_keys(&keys)
+            .unwrap();
+        relay.send_event(&event).await.unwrap();
+
+        let filter = Filter::new().kind(Kind::TextNote).limit(3);
+
+        // Authenticated fetch
+        let res = relay
+            .fetch_events(filter, Duration::from_secs(5), ReqExitPolicy::ExitOnEOSE)
+            .await;
+        assert!(res.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_nip42_fetch_events_unauthenticated() {
         // Mock relay
         let opts = RelayBuilderNip42 {
             mode: RelayBuilderNip42Mode::Read,
@@ -1137,15 +1223,6 @@ mod tests {
             .await
             .unwrap_err();
         assert!(matches!(err, Error::AuthenticationFailed));
-
-        // Set a signer
-        relay.inner.state.set_signer(keys).await;
-
-        // Authenticated fetch
-        let res = relay
-            .fetch_events(filter, Duration::from_secs(5), ReqExitPolicy::ExitOnEOSE)
-            .await;
-        assert!(res.is_ok());
     }
 
     #[tokio::test]

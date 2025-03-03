@@ -15,7 +15,7 @@ use nostr::{EventId, NostrSigner};
 use nostr_database::{IntoNostrDatabase, MemoryDatabase, NostrDatabase};
 use tokio::sync::RwLock;
 
-use crate::middleware::AdmitPolicy;
+use crate::middleware::{AdmitPolicy, AuthenticationLayer};
 use crate::transport::websocket::{DefaultWebsocketTransport, WebSocketTransport};
 
 // LruCache pre-allocate, so keep this at a reasonable value.
@@ -47,6 +47,7 @@ pub struct SharedState {
     nip42_auto_authentication: Arc<AtomicBool>,
     verification_cache: Arc<Mutex<LruCache<u64, ()>>>,
     pub(crate) admit_policy: Option<Arc<dyn AdmitPolicy>>,
+    pub(crate) authentication_layer: Option<Arc<dyn AuthenticationLayer>>,
 }
 
 impl Default for SharedState {
@@ -54,6 +55,7 @@ impl Default for SharedState {
         Self::new(
             MemoryDatabase::new().into_nostr_database(),
             Arc::new(DefaultWebsocketTransport),
+            None,
             None,
             None,
             true,
@@ -67,6 +69,7 @@ impl SharedState {
         transport: Arc<dyn WebSocketTransport>,
         signer: Option<Arc<dyn NostrSigner>>,
         admit_policy: Option<Arc<dyn AdmitPolicy>>,
+        authentication_layer: Option<Arc<dyn AuthenticationLayer>>,
         nip42_auto_authentication: bool,
     ) -> Self {
         let max_verification_cache_size: NonZeroUsize =
@@ -80,6 +83,7 @@ impl SharedState {
             nip42_auto_authentication: Arc::new(AtomicBool::new(nip42_auto_authentication)),
             verification_cache: Arc::new(Mutex::new(LruCache::new(max_verification_cache_size))),
             admit_policy,
+            authentication_layer,
         }
     }
 
