@@ -2,23 +2,23 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! Policies
+//! Middlewares
 
 use std::fmt;
 
 use nostr::util::BoxedFuture;
 use nostr::{Event, RelayUrl, SubscriptionId};
 
-/// Policy Error
+/// Middleware Error
 #[derive(Debug)]
-pub enum PolicyError {
+pub enum MiddlewareError {
     /// An error happened in the underlying backend.
     Backend(Box<dyn std::error::Error + Send + Sync>),
 }
 
-impl std::error::Error for PolicyError {}
+impl std::error::Error for MiddlewareError {}
 
-impl fmt::Display for PolicyError {
+impl fmt::Display for MiddlewareError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Backend(e) => write!(f, "{e}"),
@@ -26,7 +26,7 @@ impl fmt::Display for PolicyError {
     }
 }
 
-impl PolicyError {
+impl MiddlewareError {
     /// Create a new backend error
     ///
     /// Shorthand for `Error::Backend(Box::new(error))`.
@@ -58,5 +58,5 @@ pub trait AdmitPolicy: fmt::Debug + Send + Sync {
         relay_url: &'a RelayUrl,
         subscription_id: &'a SubscriptionId,
         event: &'a Event,
-    ) -> BoxedFuture<'a, Result<AdmitStatus, PolicyError>>;
+    ) -> BoxedFuture<'a, Result<AdmitStatus, MiddlewareError>>;
 }

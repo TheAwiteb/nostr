@@ -35,7 +35,7 @@ use super::{
     Error, Reconciliation, RelayNotification, RelayStatus, SubscriptionActivity,
     SubscriptionAutoClosedReason,
 };
-use crate::policy::AdmitStatus;
+use crate::middleware::AdmitStatus;
 use crate::pool::RelayPoolNotification;
 use crate::relay::status::AtomicRelayStatus;
 use crate::shared::SharedState;

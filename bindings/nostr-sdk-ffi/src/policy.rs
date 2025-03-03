@@ -5,7 +5,7 @@
 use std::fmt;
 use std::sync::Arc;
 
-use nostr_sdk::pool::policy;
+use nostr_sdk::pool::middleware;
 use uniffi::Enum;
 
 use crate::error::Result;
@@ -17,7 +17,7 @@ pub enum AdmitStatus {
     Rejected,
 }
 
-impl From<AdmitStatus> for policy::AdmitStatus {
+impl From<AdmitStatus> for middleware::AdmitStatus {
     fn from(status: AdmitStatus) -> Self {
         match status {
             AdmitStatus::Success => Self::Success,
@@ -55,8 +55,8 @@ mod inner {
 
     use nostr::prelude::BoxedFuture;
     use nostr::{Event, RelayUrl, SubscriptionId};
-    use nostr_sdk::pool::policy::AdmitPolicy;
-    use nostr_sdk::prelude::{AdmitStatus, PolicyError};
+    use nostr_sdk::pool::middleware::AdmitPolicy;
+    use nostr_sdk::prelude::{AdmitStatus, MiddlewareError};
 
     use super::FFI2RustAdmitPolicy;
     use crate::error::MiddleError;
@@ -67,7 +67,7 @@ mod inner {
             relay_url: &'a RelayUrl,
             subscription_id: &'a SubscriptionId,
             event: &'a Event,
-        ) -> BoxedFuture<'a, Result<AdmitStatus, PolicyError>> {
+        ) -> BoxedFuture<'a, Result<AdmitStatus, MiddlewareError>> {
             Box::pin(async move {
                 let event = Arc::new(event.clone().into());
                 self.inner
@@ -75,7 +75,7 @@ mod inner {
                     .await
                     .map(|s| s.into())
                     .map_err(MiddleError::from)
-                    .map_err(PolicyError::backend)
+                    .map_err(MiddlewareError::backend)
             })
         }
     }

@@ -10,7 +10,7 @@ use nostr::message::MessageHandleError;
 use nostr::util::hex;
 use nostr_database::DatabaseError;
 
-use crate::policy::PolicyError;
+use crate::middleware::MiddlewareError;
 use crate::shared::SharedStateError;
 use crate::transport::error::TransportError;
 
@@ -21,8 +21,8 @@ pub enum Error {
     Transport(TransportError),
     /// Shared state error
     SharedState(SharedStateError),
-    /// Policy error
-    Policy(PolicyError),
+    /// Middleware error
+    Middleware(MiddlewareError),
     /// MessageHandle error
     MessageHandle(MessageHandleError),
     /// Event error
@@ -122,7 +122,7 @@ impl fmt::Display for Error {
         match self {
             Self::Transport(e) => write!(f, "{e}"),
             Self::SharedState(e) => write!(f, "{e}"),
-            Self::Policy(e) => write!(f, "{e}"),
+            Self::Middleware(e) => write!(f, "{e}"),
             Self::MessageHandle(e) => write!(f, "{e}"),
             Self::Event(e) => write!(f, "{e}"),
             Self::EventBuilder(e) => write!(f, "{e}"),
@@ -191,9 +191,9 @@ impl From<SharedStateError> for Error {
     }
 }
 
-impl From<PolicyError> for Error {
-    fn from(e: PolicyError) -> Self {
-        Self::Policy(e)
+impl From<MiddlewareError> for Error {
+    fn from(e: MiddlewareError) -> Self {
+        Self::Middleware(e)
     }
 }
 

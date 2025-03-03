@@ -15,7 +15,7 @@ use nostr::{EventId, NostrSigner};
 use nostr_database::{IntoNostrDatabase, MemoryDatabase, NostrDatabase};
 use tokio::sync::RwLock;
 
-use crate::policy::AdmitPolicy;
+use crate::middleware::AdmitPolicy;
 use crate::transport::websocket::{DefaultWebsocketTransport, WebSocketTransport};
 
 // LruCache pre-allocate, so keep this at a reasonable value.

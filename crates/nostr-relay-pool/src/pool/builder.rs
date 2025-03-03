@@ -11,7 +11,7 @@ use nostr_database::{MemoryDatabase, NostrDatabase};
 
 use super::options::RelayPoolOptions;
 use super::RelayPool;
-use crate::policy::AdmitPolicy;
+use crate::middleware::AdmitPolicy;
 use crate::transport::websocket::{DefaultWebsocketTransport, WebSocketTransport};
 
 /// Relay Pool builder
