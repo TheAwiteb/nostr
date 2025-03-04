@@ -13,14 +13,16 @@ use std::time::Duration;
 use nostr::prelude::*;
 use nostr_database::prelude::*;
 use nostr_relay_pool::prelude::*;
-use tokio::sync::broadcast;
+use tokio::sync::{broadcast, RwLock};
 
 pub mod builder;
 mod error;
+mod middleware;
 pub mod options;
 
 pub use self::builder::ClientBuilder;
 pub use self::error::Error;
+use self::middleware::AuthenticationMiddleware;
 pub use self::options::Options;
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::options::{Connection, ConnectionTarget};
@@ -31,6 +33,7 @@ use crate::gossip::{BrokenDownFilters, Gossip};
 pub struct Client {
     pool: RelayPool,
     gossip: Gossip,
+    signer: Arc<RwLock<Option<Arc<dyn NostrSigner>>>>,
     opts: Options,
 }
 
@@ -79,19 +82,28 @@ impl Client {
     }
 
     fn from_builder(builder: ClientBuilder) -> Self {
+        // Construct signer
+        let signer = Arc::new(RwLock::new(builder.signer));
+
+        // Construct authentication layer
+        let auth_layer = AuthenticationMiddleware {
+            signer: signer.clone(),
+        };
+
         // Construct relay pool builder
         let pool_builder: RelayPoolBuilder = RelayPoolBuilder {
             websocket_transport: builder.websocket_transport,
             admit_policy: builder.admit_policy,
+            authentication_layer: Some(Arc::new(auth_layer)),
             opts: builder.opts.pool,
             __database: builder.database,
-            __signer: builder.signer,
         };
 
         // Construct client
         Self {
             pool: pool_builder.build(),
             gossip: Gossip::new(),
+            signer,
             opts: builder.opts,
         }
     }
@@ -116,7 +128,8 @@ impl Client {
     /// Check if signer is configured
     #[inline]
     pub async fn has_signer(&self) -> bool {
-        self.pool.state().has_signer().await
+        let signer = self.signer.read().await;
+        signer.is_some()
     }
 
     /// Get current nostr signer
@@ -126,7 +139,8 @@ impl Client {
     /// Returns an error if the signer isn't set.
     #[inline]
     pub async fn signer(&self) -> Result<Arc<dyn NostrSigner>, Error> {
-        Ok(self.pool.state().signer().await?)
+        let signer = self.signer.read().await;
+        signer.clone().ok_or(Error::SignerNotConfigured)
     }
 
     /// Set nostr signer
@@ -135,13 +149,15 @@ impl Client {
     where
         T: IntoNostrSigner,
     {
-        self.pool.state().set_signer(signer).await;
+        let mut s = self.signer.write().await;
+        *s = Some(signer.into_nostr_signer());
     }
 
     /// Unset nostr signer
     #[inline]
     pub async fn unset_signer(&self) {
-        self.pool.state().unset_signer().await;
+        let mut s = self.signer.write().await;
+        *s = None;
     }
 
     /// Get [`RelayPool`]

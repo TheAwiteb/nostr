@@ -6,7 +6,6 @@
 
 use std::sync::Arc;
 
-use nostr::NostrSigner;
 use nostr_database::{MemoryDatabase, NostrDatabase};
 
 use super::options::RelayPoolOptions;
@@ -28,8 +27,6 @@ pub struct RelayPoolBuilder {
     // Private stuff
     #[doc(hidden)]
     pub __database: Arc<dyn NostrDatabase>,
-    #[doc(hidden)]
-    pub __signer: Option<Arc<dyn NostrSigner>>,
 }
 
 impl Default for RelayPoolBuilder {
@@ -40,7 +37,6 @@ impl Default for RelayPoolBuilder {
             authentication_layer: None,
             opts: RelayPoolOptions::default(),
             __database: Arc::new(MemoryDatabase::default()),
-            __signer: None,
         }
     }
 }

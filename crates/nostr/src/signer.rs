@@ -179,3 +179,56 @@ impl NostrSigner for Arc<dyn NostrSigner> {
         self.as_ref().nip44_decrypt(public_key, payload)
     }
 }
+
+impl NostrSigner for &Arc<dyn NostrSigner> {
+    #[inline]
+    fn backend(&self) -> SignerBackend {
+        self.as_ref().backend()
+    }
+
+    #[inline]
+    fn get_public_key(&self) -> BoxedFuture<Result<PublicKey, SignerError>> {
+        self.as_ref().get_public_key()
+    }
+
+    #[inline]
+    fn sign_event(&self, unsigned: UnsignedEvent) -> BoxedFuture<Result<Event, SignerError>> {
+        self.as_ref().sign_event(unsigned)
+    }
+
+    #[inline]
+    fn nip04_encrypt<'a>(
+        &'a self,
+        public_key: &'a PublicKey,
+        content: &'a str,
+    ) -> BoxedFuture<'a, Result<String, SignerError>> {
+        self.as_ref().nip04_encrypt(public_key, content)
+    }
+
+    #[inline]
+    fn nip04_decrypt<'a>(
+        &'a self,
+        public_key: &'a PublicKey,
+        encrypted_content: &'a str,
+    ) -> BoxedFuture<'a, Result<String, SignerError>> {
+        self.as_ref().nip04_decrypt(public_key, encrypted_content)
+    }
+
+    #[inline]
+    fn nip44_encrypt<'a>(
+        &'a self,
+        public_key: &'a PublicKey,
+        content: &'a str,
+    ) -> BoxedFuture<'a, Result<String, SignerError>> {
+        self.as_ref().nip44_encrypt(public_key, content)
+    }
+
+    #[inline]
+    fn nip44_decrypt<'a>(
+        &'a self,
+        public_key: &'a PublicKey,
+        payload: &'a str,
+    ) -> BoxedFuture<'a, Result<String, SignerError>> {
+        self.as_ref().nip44_decrypt(public_key, payload)
+    }
+}

@@ -10,10 +10,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use lru::LruCache;
-use nostr::prelude::IntoNostrSigner;
-use nostr::{EventId, NostrSigner};
+use nostr::EventId;
 use nostr_database::{IntoNostrDatabase, MemoryDatabase, NostrDatabase};
-use tokio::sync::RwLock;
 
 use crate::middleware::{AdmitPolicy, AuthenticationLayer};
 use crate::transport::websocket::{DefaultWebsocketTransport, WebSocketTransport};
@@ -24,7 +22,6 @@ const MAX_VERIFICATION_CACHE_SIZE: usize = 128_000;
 
 #[derive(Debug)]
 pub enum SharedStateError {
-    SignerNotConfigured,
     MutexPoisoned,
 }
 
@@ -33,7 +30,6 @@ impl std::error::Error for SharedStateError {}
 impl fmt::Display for SharedStateError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::SignerNotConfigured => write!(f, "signer not configured"),
             Self::MutexPoisoned => write!(f, "mutex poisoned"),
         }
     }
@@ -43,7 +39,6 @@ impl fmt::Display for SharedStateError {
 pub struct SharedState {
     pub(crate) database: Arc<dyn NostrDatabase>,
     pub(crate) transport: Arc<dyn WebSocketTransport>,
-    signer: Arc<RwLock<Option<Arc<dyn NostrSigner>>>>,
     nip42_auto_authentication: Arc<AtomicBool>,
     verification_cache: Arc<Mutex<LruCache<u64, ()>>>,
     pub(crate) admit_policy: Option<Arc<dyn AdmitPolicy>>,
@@ -57,7 +52,6 @@ impl Default for SharedState {
             Arc::new(DefaultWebsocketTransport),
             None,
             None,
-            None,
             true,
         )
     }
@@ -67,7 +61,6 @@ impl SharedState {
     pub fn new(
         database: Arc<dyn NostrDatabase>,
         transport: Arc<dyn WebSocketTransport>,
-        signer: Option<Arc<dyn NostrSigner>>,
         admit_policy: Option<Arc<dyn AdmitPolicy>>,
         authentication_layer: Option<Arc<dyn AuthenticationLayer>>,
         nip42_auto_authentication: bool,
@@ -79,7 +72,6 @@ impl SharedState {
         Self {
             database,
             transport,
-            signer: Arc::new(RwLock::new(signer)),
             nip42_auto_authentication: Arc::new(AtomicBool::new(nip42_auto_authentication)),
             verification_cache: Arc::new(Mutex::new(LruCache::new(max_verification_cache_size))),
             admit_policy,
@@ -116,35 +108,6 @@ impl SharedState {
     #[inline]
     pub fn database(&self) -> &Arc<dyn NostrDatabase> {
         &self.database
-    }
-
-    /// Check if signer is configured
-    pub async fn has_signer(&self) -> bool {
-        let signer = self.signer.read().await;
-        signer.is_some()
-    }
-
-    /// Get current nostr signer
-    ///
-    /// Rise error if it not set.
-    pub async fn signer(&self) -> Result<Arc<dyn NostrSigner>, SharedStateError> {
-        let signer = self.signer.read().await;
-        signer.clone().ok_or(SharedStateError::SignerNotConfigured)
-    }
-
-    /// Set nostr signer
-    pub async fn set_signer<T>(&self, signer: T)
-    where
-        T: IntoNostrSigner,
-    {
-        let mut s = self.signer.write().await;
-        *s = Some(signer.into_nostr_signer());
-    }
-
-    /// Unset nostr signer
-    pub async fn unset_signer(&self) {
-        let mut s = self.signer.write().await;
-        *s = None;
     }
 
     pub(crate) fn verified(&self, id: &EventId) -> Result<bool, SharedStateError> {

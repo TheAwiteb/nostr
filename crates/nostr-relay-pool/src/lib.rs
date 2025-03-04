@@ -22,7 +22,6 @@ pub mod middleware;
 pub mod pool;
 pub mod prelude;
 pub mod relay;
-#[doc(hidden)]
 mod shared;
 pub mod stream;
 pub mod transport;
@@ -36,10 +35,3 @@ pub use self::relay::options::{
 };
 pub use self::relay::stats::RelayConnectionStats;
 pub use self::relay::{Reconciliation, Relay, RelayNotification, RelayStatus};
-
-// Not public API.
-#[doc(hidden)]
-pub mod __private {
-    #[doc(hidden)]
-    pub use super::shared::{SharedState, SharedStateError};
-}

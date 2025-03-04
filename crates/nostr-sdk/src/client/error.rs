@@ -7,7 +7,6 @@ use std::fmt;
 use nostr::prelude::*;
 use nostr::serde_json;
 use nostr_database::prelude::*;
-use nostr_relay_pool::__private::SharedStateError;
 use nostr_relay_pool::prelude::*;
 
 /// Client error
@@ -25,8 +24,6 @@ pub enum Error {
     EventBuilder(builder::Error),
     /// Json error
     Json(serde_json::Error),
-    /// Shared state error
-    SharedState(SharedStateError),
     /// NIP59
     #[cfg(feature = "nip59")]
     NIP59(nip59::Error),
@@ -34,6 +31,8 @@ pub enum Error {
     EventNotFound(EventId),
     /// Impossible to zap
     ImpossibleToZap(String),
+    /// Signer not configured
+    SignerNotConfigured,
     /// Broken down filters for gossip are empty
     GossipFiltersEmpty,
     /// Private message (NIP17) relays not found
@@ -51,7 +50,6 @@ impl fmt::Display for Error {
             Self::Signer(e) => write!(f, "{e}"),
             Self::EventBuilder(e) => write!(f, "{e}"),
             Self::Json(e) => write!(f, "{e}"),
-            Self::SharedState(e) => write!(f, "{e}"),
             #[cfg(feature = "nip59")]
             Self::NIP59(e) => write!(f, "{e}"),
             Self::EventNotFound(id) => {
@@ -60,6 +58,7 @@ impl fmt::Display for Error {
             Self::ImpossibleToZap(id) => {
                 write!(f, "impossible to send zap: {id}")
             }
+            Self::SignerNotConfigured => write!(f, "signer not configured"),
             Self::GossipFiltersEmpty => {
                 write!(f, "gossip broken down filters are empty")
             }
@@ -101,12 +100,6 @@ impl From<builder::Error> for Error {
 impl From<serde_json::Error> for Error {
     fn from(e: serde_json::Error) -> Self {
         Self::Json(e)
-    }
-}
-
-impl From<SharedStateError> for Error {
-    fn from(e: SharedStateError) -> Self {
-        Self::SharedState(e)
     }
 }
 
