@@ -43,6 +43,7 @@
 
 ### Added
 
+* nostr: Add NIP-C0 (Code Snippets) support ([awiteb])
 * nostr: add `TagKind::u` constructor ([Yuki Kishimoto])
 * nostr: derive `Copy` for `HttpMethod` ([Yuki Kishimoto])
 * nostr: add `nip98::verify_auth_header` ([Yuki Kishimoto])
