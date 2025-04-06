@@ -231,6 +231,26 @@ pub enum TagStandard {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/32.md>
     Label(Vec<String>),
+    /// Required dependency
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/C0.md>
+    Dependency(String),
+    /// File extension
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/C0.md>
+    Extension(String),
+    /// License of the shared content
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/C0.md>
+    License(String),
+    /// Runtime or environment specification
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/C0.md>
+    Runtime(String),
+    /// Reference to the origin repository
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/C0.md>
+    Repository(String),
     /// Protected event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/70.md>
@@ -602,6 +622,11 @@ impl TagStandard {
             Self::Relays(..) => TagKind::Relays,
             Self::Amount { .. } => TagKind::Amount,
             Self::Name(..) => TagKind::Name,
+            Self::Dependency(..) => TagKind::Dependency,
+            Self::Extension(..) => TagKind::Extension,
+            Self::License(..) => TagKind::License,
+            Self::Runtime(..) => TagKind::Runtime,
+            Self::Repository(..) => TagKind::Repository,
             Self::Lnurl(..) => TagKind::Lnurl,
             Self::Url(..) => TagKind::Url,
             Self::MimeType(..) => TagKind::SingleLetter(SingleLetterTag {
@@ -887,12 +912,13 @@ impl From<TagStandard> for Vec<String> {
                 }
                 tag
             }
-            TagStandard::Name(name) => {
-                vec![tag_kind, name]
-            }
-            TagStandard::Lnurl(lnurl) => {
-                vec![tag_kind, lnurl]
-            }
+            TagStandard::Name(name) => vec![tag_kind, name],
+            TagStandard::Dependency(dep) => vec![tag_kind, dep],
+            TagStandard::Extension(ext) => vec![tag_kind, ext],
+            TagStandard::License(license) => vec![tag_kind, license],
+            TagStandard::Runtime(runtime) => vec![tag_kind, runtime],
+            TagStandard::Repository(repo) => vec![tag_kind, repo],
+            TagStandard::Lnurl(lnurl) => vec![tag_kind, lnurl],
             TagStandard::Url(url) => vec![tag_kind, url.to_string()],
             TagStandard::MimeType(mime) => vec![tag_kind, mime],
             TagStandard::Aes256Gcm { key, iv } => vec![tag_kind, key, iv],

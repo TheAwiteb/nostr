@@ -81,6 +81,26 @@ pub enum TagKind<'a> {
     MlsExtensions,
     /// Name
     Name,
+    /// Required dependency
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/C0.md>
+    Dependency,
+    /// File extension
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/C0.md>
+    Extension,
+    /// License of the shared content
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/C0.md>
+    License,
+    /// Runtime or environment specification
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/C0.md>
+    Runtime,
+    /// Reference to the origin repository
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/C0.md>
+    Repository,
     /// Nonce
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/13.md>
@@ -298,6 +318,11 @@ impl<'a> TagKind<'a> {
             Self::MlsCiphersuite => "mls_ciphersuite",
             Self::MlsExtensions => "mls_extensions",
             Self::Name => "name",
+            Self::Dependency => "dep",
+            Self::Extension => "extension",
+            Self::License => "license",
+            Self::Runtime => "runtime",
+            Self::Repository => "repo",
             Self::Nonce => "nonce",
             Self::Payload => "payload",
             Self::Preimage => "preimage",
