@@ -51,7 +51,7 @@
 
 ### Fixed
 
-- nostr: Handle `A` and `E` standard tags
+- nostr: Handle `A` and `E` standard tags ([awiteb] at https://github.com/rust-nostr/nostr/pull/870)
 
 ### Deprecated
 
