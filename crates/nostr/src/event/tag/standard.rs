@@ -2109,6 +2109,23 @@ mod tests {
 
         assert_eq!(
             TagStandard::parse(&[
+                "E",
+                "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
+            ]),
+            Ok(TagStandard::Event {
+                event_id: EventId::from_hex(
+                    "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
+                )
+                .unwrap(),
+                relay_url: None,
+                marker: None,
+                public_key: None,
+                uppercase: true
+            })
+        );
+
+        assert_eq!(
+            TagStandard::parse(&[
                 "q",
                 "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
             ])
@@ -2432,6 +2449,27 @@ mod tests {
                 .identifier("ipsum"),
                 relay_url: Some(RelayUrl::parse("wss://relay.nostr.org").unwrap()),
                 uppercase: false,
+            }
+        );
+
+        assert_eq!(
+            TagStandard::parse(&[
+                "A",
+                "30023:a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919:ipsum",
+                "wss://relay.nostr.org"
+            ])
+            .unwrap(),
+            TagStandard::Coordinate {
+                coordinate: Coordinate::new(
+                    Kind::LongFormTextNote,
+                    PublicKey::from_str(
+                        "a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919"
+                    )
+                    .unwrap()
+                )
+                .identifier("ipsum"),
+                relay_url: Some(RelayUrl::parse("wss://relay.nostr.org").unwrap()),
+                uppercase: true,
             }
         );
 
