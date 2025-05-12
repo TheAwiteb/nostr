@@ -1044,8 +1044,8 @@ where
     // Check if it's a report
     if let Some(tag_2) = tag_2 {
         return match Report::from_str(tag_2) {
-            Ok(report) => Ok(TagStandard::EventReport(event_id, report)),
-            Err(_) => {
+            Ok(report) if !uppercase => Ok(TagStandard::EventReport(event_id, report)),
+            _ => {
                 // Check if 3rd arg is a marker or a public key
                 let (marker, public_key) = match (tag_3, tag_4) {
                     (Some(marker), Some(public_key)) => {
