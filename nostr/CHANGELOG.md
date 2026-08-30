@@ -36,7 +36,6 @@
 ### Added
 
 - Impl `From<PublicKey>` for `Tag` (https://github.com/nostrdevkit/nostr/pull/1446)
-- Support NIP-44 v2 payloads up to 2^32 - 1 plaintext bytes
 - Take an `Into<Tag>` iterator instead of `Tag` iterator in
   `GiftWrapBuilder::extra_tags`, `PrivateDirectMessageBuilder::extra_tags`
   and `PrivateDirectMessageBuilder::rumor_extra_tags` (https://github.com/nostrdevkit/nostr/pull/1447)
@@ -44,6 +43,12 @@
 ### Security
 
 - Enforce max length for relay URLs in `RelayUrl::parse` (https://github.com/nostrdevkit/nostr/pull/1451)
+
+## v0.45.4 - 2026/08/30
+
+### Added
+
+- Support NIP-44 v2 payloads up to 2^32 - 1 plaintext bytes (https://github.com/nostrdevkit/nostr/pull/1456)
 
 ## v0.45.3 - 2026/08/19
 
